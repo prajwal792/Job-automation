@@ -45,7 +45,8 @@ msg["To"] = EMAIL
 server = smtplib.SMTP_SSL("smtp.gmail.com", 465)
 server.login(EMAIL, PASSWORD)
 server.send_message(msg)
-server.quit()msg["To"] = EMAIL
+msg["To"] = EMAIL
+server.quit()
 
 server = smtplib.SMTP_SSL("smtp.gmail.com", 465)
 server.login(EMAIL, PASSWORD)
