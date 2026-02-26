@@ -9,32 +9,37 @@ PASSWORD = os.environ.get("PASSWORD")
 jobs = []
 
 try:
-    response = requests.get(
-        "https://remoteok.com/api",
-        headers={"User-Agent": "Mozilla/5.0"}
-    )
-    data = response.json()
+    r = requests.get("https://remoteok.com/api", headers={"User-Agent": "Mozilla/5.0"})
+    data = r.json()
 
     for job in data:
         if isinstance(job, dict):
-
             role = job.get("position", "")
             company = job.get("company", "")
             link = job.get("url", "")
 
             text = (role + " " + company).lower()
 
-            if "design" in text or "ux" in text or "ui" in text:
+            if "design" in text or "ui" in text or "ux" in text:
                 jobs.append(f"{role} — {company}\n{link}")
 
 except Exception as e:
-    jobs.append("Error reading jobs: " + str(e))
+    jobs.append("Error: " + str(e))
 
 body = "\n\n".join(jobs[:10])
 
 if not body:
     body = "No jobs found today."
 
+msg = MIMEText(body)
+msg["Subject"] = "Daily UI UX Jobs"
+msg["From"] = EMAIL
+msg["To"] = EMAIL
+
+server = smtplib.SMTP_SSL("smtp.gmail.com", 465)
+server.login(EMAIL, PASSWORD)
+server.send_message(msg)
+server.quit()
 msg = MIMEText(body)
 msg["Subject"] = "Daily UI UX Jobs"
 msg["From"] = EMAIL
