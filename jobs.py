@@ -7,34 +7,78 @@ import os
 EMAIL = os.environ["EMAIL"]
 PASSWORD = os.environ["PASSWORD"]
 
-KEYWORDS = [
-    "junior",
-    "entry",
-    "associate",
-    "ui",
-    "ux",
-    "product designer"
-]
-
-LOCATIONS = [
-    "remote",
-    "india",
-    "bangalore"
-]
+KEYWORDS = ["junior", "entry", "ui", "ux", "designer", "product designer"]
 
 jobs = []
 
-
-def is_relevant(text):
+def relevant(text):
     text = text.lower()
     return any(k in text for k in KEYWORDS)
 
 
-# ----------------
-# RemoteOK
-# ----------------
+# RemoteOK jobs
 try:
-    data = requests.get("https://remoteok.com/api").json()
+    headers = {"User-Agent": "Mozilla/5.0"}
+    response = requests.get("https://remoteok.com/api", headers=headers)
+    data = response.json()
+
+    for job in data:
+        if isinstance(job, dict):
+
+            role = job.get("position", "")
+            company = job.get("company", "")
+            link = job.get("url", "")
+            location = job.get("location", "")
+
+            combined = f"{role} {company} {location}"
+
+            if relevant(combined):
+                jobs.append(f"{role} — {company}\n{link}\nLocation: {location}")
+
+except Exception as e:
+    print(e)
+
+
+# Dribbble jobs
+try:
+    url = "https://dribbble.com/jobs"
+    r = requests.get(url, headers={"User-Agent": "Mozilla/5.0"})
+    soup = BeautifulSoup(r.text, "html.parser")
+
+    for job in soup.select("a.job-board-item"):
+
+        title = job.select_one(".job-board-item__title")
+        company = job.select_one(".job-board-item__company")
+
+        if title and company:
+
+            role = title.text.strip()
+            comp = company.text.strip()
+            link = "https://dribbble.com" + job["href"]
+
+            if relevant(role):
+                jobs.append(f"{role} — {comp}\n{link}")
+
+except Exception as e:
+    print(e)
+
+
+jobs = list(dict.fromkeys(jobs))[:20]
+
+body = "\n\n".join(jobs)
+
+if not body:
+    body = "No UI/UX jobs found today."
+
+msg = MIMEText(body)
+msg["Subject"] = "Daily UI/UX Jobs"
+msg["From"] = EMAIL
+msg["To"] = EMAIL
+
+server = smtplib.SMTP_SSL("smtp.gmail.com", 465)
+server.login(EMAIL, PASSWORD)
+server.send_message(msg)
+server.quit()    data = requests.get("https://remoteok.com/api").json()
 
     for job in data:
         if isinstance(job, dict):
