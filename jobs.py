@@ -1,25 +1,18 @@
 import requests
 import smtplib
 from email.mime.text import MIMEText
-from bs4 import BeautifulSoup
 import os
 
-EMAIL = os.environ["EMAIL"]
-PASSWORD = os.environ["PASSWORD"]
-
-KEYWORDS = ["junior", "entry", "ui", "ux", "designer", "product designer"]
+EMAIL = os.environ.get("EMAIL")
+PASSWORD = os.environ.get("PASSWORD")
 
 jobs = []
 
-def relevant(text):
-    text = text.lower()
-    return any(k in text for k in KEYWORDS)
-
-
-# RemoteOK jobs
 try:
-    headers = {"User-Agent": "Mozilla/5.0"}
-    response = requests.get("https://remoteok.com/api", headers=headers)
+    response = requests.get(
+        "https://remoteok.com/api",
+        headers={"User-Agent": "Mozilla/5.0"}
+    )
     data = response.json()
 
     for job in data:
@@ -28,13 +21,29 @@ try:
             role = job.get("position", "")
             company = job.get("company", "")
             link = job.get("url", "")
-            location = job.get("location", "")
 
-            combined = f"{role} {company} {location}"
+            text = (role + " " + company).lower()
 
-            if relevant(combined):
-                jobs.append(f"{role} — {company}\n{link}\nLocation: {location}")
+            if "design" in text or "ux" in text or "ui" in text:
+                jobs.append(f"{role} — {company}\n{link}")
 
+except Exception as e:
+    jobs.append("Error reading jobs: " + str(e))
+
+body = "\n\n".join(jobs[:10])
+
+if not body:
+    body = "No jobs found today."
+
+msg = MIMEText(body)
+msg["Subject"] = "Daily UI UX Jobs"
+msg["From"] = EMAIL
+msg["To"] = EMAIL
+
+server = smtplib.SMTP_SSL("smtp.gmail.com", 465)
+server.login(EMAIL, PASSWORD)
+server.send_message(msg)
+server.quit()
 except Exception as e:
     print(e)
 
