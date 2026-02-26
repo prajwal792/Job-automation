@@ -1,5 +1,4 @@
 import requests
-from bs4 import BeautifulSoup
 import smtplib
 from email.mime.text import MIMEText
 import os
@@ -7,22 +6,31 @@ import os
 EMAIL = os.environ["EMAIL"]
 PASSWORD = os.environ["PASSWORD"]
 
-url = "https://remoteok.com/remote-design-jobs"
-headers = {"User-Agent": "Mozilla/5.0"}
+url = "https://remoteok.com/api"
 
-r = requests.get(url, headers=headers)
-soup = BeautifulSoup(r.text, "html.parser")
+headers = {
+    "User-Agent": "Mozilla/5.0"
+}
+
+data = requests.get(url, headers=headers).json()
 
 jobs = []
 
-for job in soup.select("tr.job"):
-    title = job.select_one("h2")
-    company = job.select_one("h3")
+for job in data:
+    if isinstance(job, dict):
+        position = job.get("position", "")
+        company = job.get("company", "")
+        link = job.get("url", "")
 
-    if title and company:
-        jobs.append(f"{title.text.strip()} - {company.text.strip()}")
+        text = f"{position} {company}".lower()
 
-body = "\n".join(jobs[:15])
+        if "design" in text or "ux" in text or "ui" in text:
+            jobs.append(f"{position} — {company}\n{link}")
+
+body = "\n\n".join(jobs[:10])
+
+if body == "":
+    body = "No new UI/UX jobs found today."
 
 msg = MIMEText(body)
 msg["Subject"] = "Daily UI/UX Jobs"
