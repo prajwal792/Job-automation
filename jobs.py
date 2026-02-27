@@ -6,59 +6,107 @@ from email.mime.text import MIMEText
 EMAIL = os.environ["EMAIL"]
 PASSWORD = os.environ["PASSWORD"]
 
-ENTRY_KEYWORDS = [
-    "junior","entry","fresher","graduate","trainee","associate","intern","0-1","0-2"
+ENTRY_WORDS = [
+"junior","fresher","entry","graduate","associate","intern","trainee","0-1","0-2"
 ]
 
-ROLE_KEYWORDS = [
-    "ui","ux","designer","product designer","web designer",
-    "frontend","react","javascript","developer"
+ROLE_WORDS = [
+"frontend","react","javascript","ui","ux","web","product designer"
 ]
 
-BLOCK_WORDS = [
-    "senior","lead","manager","principal","director","architect","5+","7+","10+"
+BLOCK = [
+"senior","lead","staff","principal","manager","director","architect","5+","7+","10+"
 ]
 
-def valid_job(title):
+
+def is_valid(title):
     t = title.lower()
 
-    entry = any(k in t for k in ENTRY_KEYWORDS)
-    role = any(k in t for k in ROLE_KEYWORDS)
-    not_senior = not any(k in t for k in BLOCK_WORDS)
+    entry = any(w in t for w in ENTRY_WORDS)
+    role = any(w in t for w in ROLE_WORDS)
+    bad = any(w in t for w in BLOCK)
 
-    return entry and role and not_senior
+    return entry and role and not bad
 
 
-url = "https://remotive.com/api/remote-jobs"
-data = requests.get(url).json()
+def fetch_remotive():
+    url = "https://remotive.com/api/remote-jobs"
+    data = requests.get(url).json()
+
+    results = []
+
+    for job in data["jobs"]:
+        if is_valid(job["title"]):
+            results.append({
+                "title": job["title"],
+                "company": job["company_name"],
+                "url": job["url"]
+            })
+
+    return results
+
+
+def fetch_remoteok():
+    url = "https://remoteok.com/api"
+    data = requests.get(url).json()
+
+    results = []
+
+    for job in data[1:]:
+        title = job.get("position","")
+
+        if is_valid(title):
+            results.append({
+                "title": title,
+                "company": job.get("company",""),
+                "url": job.get("url","")
+            })
+
+    return results
+
 
 jobs = []
+jobs += fetch_remotive()
+jobs += fetch_remoteok()
 
-for job in data["jobs"]:
-    title = job["title"]
+# remove duplicates
+unique = {(j["title"], j["company"]): j for j in jobs}
+jobs = list(unique.values())
 
-    if valid_job(title):
-        jobs.append({
-            "title": title,
-            "company": job["company_name"],
-            "link": job["url"]
-        })
+jobs = jobs[:20]
 
+report = ""
 
-message = ""
+for job in jobs:
 
-for job in jobs[:10]:
-    message += f"{job['title']} — {job['company']}\n{job['link']}\n\n"
+    linkedin_msg = f"""
+Hi {job['company']} team,
 
-if message == "":
-    message = "No matching entry level jobs today."
+I’m a frontend developer skilled in JavaScript and React and very interested in this role.
 
+Would love to contribute and learn from your team.
 
-msg = MIMEText(message)
-msg["Subject"] = "Daily Fresher Job Alert"
+Thanks!
+"""
+
+    report += f"""
+{job['title']} — {job['company']}
+Apply: {job['url']}
+
+LinkedIn Message:
+{linkedin_msg}
+
+------------------------
+"""
+
+if report == "":
+    report = "No fresher roles found today."
+
+msg = MIMEText(report)
+
+msg["Subject"] = "Daily Fresher Developer Jobs"
 msg["From"] = EMAIL
 msg["To"] = EMAIL
-
 
 server = smtplib.SMTP_SSL("smtp.gmail.com", 465)
 server.login(EMAIL, PASSWORD)
