@@ -1,43 +1,61 @@
 import requests
 import smtplib
-from email.mime.text import MIMEText
 import os
+from email.mime.text import MIMEText
 
-EMAIL = os.environ.get("EMAIL")
-PASSWORD = os.environ.get("PASSWORD")
+EMAIL = os.environ["EMAIL"]
+PASSWORD = os.environ["PASSWORD"]
+
+ENTRY_KEYWORDS = [
+    "junior","entry","fresher","graduate","trainee","associate","intern","0-1","0-2"
+]
+
+ROLE_KEYWORDS = [
+    "ui","ux","designer","product designer","web designer",
+    "frontend","react","javascript","developer"
+]
+
+BLOCK_WORDS = [
+    "senior","lead","manager","principal","director","architect","5+","7+","10+"
+]
+
+def valid_job(title):
+    t = title.lower()
+
+    entry = any(k in t for k in ENTRY_KEYWORDS)
+    role = any(k in t for k in ROLE_KEYWORDS)
+    not_senior = not any(k in t for k in BLOCK_WORDS)
+
+    return entry and role and not_senior
+
+
+url = "https://remotive.com/api/remote-jobs"
+data = requests.get(url).json()
 
 jobs = []
 
-headers = {"User-Agent": "Mozilla/5.0"}
+for job in data["jobs"]:
+    title = job["title"]
 
-try:
-    r = requests.get("https://remoteok.com/api", headers=headers)
-    data = r.json()
-
-    for job in data:
-        if isinstance(job, dict):
-
-            role = job.get("position", "")
-            company = job.get("company", "")
-            link = job.get("url", "")
-
-            text = (role + " " + company).lower()
-
-            if "design" in text or "ui" in text or "ux" in text:
-                jobs.append(f"{role} — {company}\n{link}")
-
-except Exception as e:
-    jobs.append("Error fetching jobs: " + str(e))
+    if valid_job(title):
+        jobs.append({
+            "title": title,
+            "company": job["company_name"],
+            "link": job["url"]
+        })
 
 
-body = "\n\n".join(jobs[:10])
+message = ""
 
-if not body:
-    body = "No jobs found today."
+for job in jobs[:10]:
+    message += f"{job['title']} — {job['company']}\n{job['link']}\n\n"
+
+if message == "":
+    message = "No matching entry level jobs today."
 
 
-msg = MIMEText(body)
-msg["Subject"] = "Daily UI UX Jobs"
+msg = MIMEText(message)
+msg["Subject"] = "Daily Fresher Job Alert"
 msg["From"] = EMAIL
 msg["To"] = EMAIL
 
