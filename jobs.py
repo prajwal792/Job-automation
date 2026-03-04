@@ -3,8 +3,8 @@ import smtplib
 import os
 from email.mime.text import MIMEText
 
-EMAIL = os.environ["EMAIL"]
-PASSWORD = os.environ["PASSWORD"]
+EMAIL = os.environ["prajjuprajwal330@gmail.com"]
+PASSWORD = os.environ["kndj pomg grrf snsa"]
 
 ENTRY_WORDS = [
 "junior","fresher","entry","graduate","associate","intern","trainee","0-1","0-2"
