@@ -4,9 +4,9 @@ import smtplib
 import os
 from datetime import datetime
 
-EMAIL = os.getenv("EMAIL")
-PASSWORD = os.getenv("EMAIL_PASSWORD")
-TO_EMAIL = os.getenv("TO_EMAIL")
+EMAIL = os.getenv("prajjuprajwal330@gmail.com")
+PASSWORD = os.getenv("kndjpomggrrfsnsa")
+TO_EMAIL = os.getenv("prajjuprajwal330@gmail.com")
 
 keywords = [
     "entry level data analyst",
