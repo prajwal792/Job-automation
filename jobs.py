@@ -1,114 +1,92 @@
 import requests
+from bs4 import BeautifulSoup
 import smtplib
 import os
-from email.mime.text import MIMEText
+from datetime import datetime
 
-EMAIL = os.environ["prajjuprajwal330@gmail.com"]
-PASSWORD = os.environ["kndj pomg grrf snsa"]
+EMAIL = os.getenv("EMAIL")
+PASSWORD = os.getenv("EMAIL_PASSWORD")
+TO_EMAIL = os.getenv("TO_EMAIL")
 
-ENTRY_WORDS = [
-"junior","fresher","entry","graduate","associate","intern","trainee","0-1","0-2"
+keywords = [
+    "entry level data analyst",
+    "junior data analyst",
+    "data analyst intern",
+    "business analyst fresher"
 ]
 
-ROLE_WORDS = [
-"frontend","react","javascript","ui","ux","web","product designer"
-]
-
-BLOCK = [
-"senior","lead","staff","principal","manager","director","architect","5+","7+","10+"
-]
-
-
-def is_valid(title):
-    t = title.lower()
-
-    entry = any(w in t for w in ENTRY_WORDS)
-    role = any(w in t for w in ROLE_WORDS)
-    bad = any(w in t for w in BLOCK)
-
-    return entry and role and not bad
-
-
-def fetch_remotive():
-    url = "https://remotive.com/api/remote-jobs"
-    data = requests.get(url).json()
-
-    results = []
-
-    for job in data["jobs"]:
-        if is_valid(job["title"]):
-            results.append({
-                "title": job["title"],
-                "company": job["company_name"],
-                "url": job["url"]
-            })
-
-    return results
-
-
-def fetch_remoteok():
-    url = "https://remoteok.com/api"
-    data = requests.get(url).json()
-
-    results = []
-
-    for job in data[1:]:
-        title = job.get("position","")
-
-        if is_valid(title):
-            results.append({
-                "title": title,
-                "company": job.get("company",""),
-                "url": job.get("url","")
-            })
-
-    return results
-
+blocked_words = ["senior", "lead", "manager", "principal", "director"]
 
 jobs = []
-jobs += fetch_remotive()
-jobs += fetch_remoteok()
 
-# remove duplicates
-unique = {(j["title"], j["company"]): j for j in jobs}
-jobs = list(unique.values())
+def search_indeed():
+    url = "https://www.indeed.com/jobs?q=data+analyst&l=India&fromage=1"
+    headers = {"User-Agent": "Mozilla/5.0"}
 
-jobs = jobs[:20]
+    r = requests.get(url, headers=headers)
+    soup = BeautifulSoup(r.text, "html.parser")
 
-report = ""
+    for job in soup.select(".job_seen_beacon"):
+        title = job.select_one("h2").text.strip()
+        link = "https://indeed.com" + job.select_one("a")["href"]
+        company = job.select_one(".companyName").text.strip()
 
-for job in jobs:
+        if any(word in title.lower() for word in blocked_words):
+            continue
 
-    linkedin_msg = f"""
+        jobs.append({
+            "title": title,
+            "company": company,
+            "link": link
+        })
+
+def generate_email():
+    message = f"Subject: Daily Entry-Level Data Analyst Jobs\n\n"
+    message += f"Found {len(jobs)} jobs today\n\n"
+
+    for job in jobs:
+        linkedin_msg = f"""
 Hi {job['company']} team,
 
-I’m a frontend developer skilled in JavaScript and React and very interested in this role.
+I came across the {job['title']} role and it really interested me.
+I have a background in Python, data analysis, and dashboards,
+and I'm currently seeking an entry-level opportunity.
 
-Would love to contribute and learn from your team.
+I’d love to connect and learn more.
 
-Thanks!
+Best regards,
+Prajwal
 """
 
-    report += f"""
+        message += f"""
 {job['title']} — {job['company']}
-Apply: {job['url']}
+Apply: {job['link']}
 
-LinkedIn Message:
+LinkedIn message:
 {linkedin_msg}
 
-------------------------
+-----------------------
 """
 
-if report == "":
-    report = "No fresher roles found today."
+    return message
 
-msg = MIMEText(report)
+def send_email(content):
+    server = smtplib.SMTP("smtp.gmail.com", 587)
+    server.starttls()
+    server.login(EMAIL, PASSWORD)
+    server.sendmail(EMAIL, TO_EMAIL, content)
+    server.quit()
 
-msg["Subject"] = "Daily Fresher Developer Jobs"
-msg["From"] = EMAIL
-msg["To"] = EMAIL
+def main():
+    search_indeed()
 
-server = smtplib.SMTP_SSL("smtp.gmail.com", 465)
-server.login(EMAIL, PASSWORD)
-server.send_message(msg)
-server.quit()
+    if not jobs:
+        print("No jobs found today")
+        return
+
+    email_content = generate_email()
+    send_email(email_content)
+    print("Email sent!")
+
+if __name__ == "__main__":
+    main()
